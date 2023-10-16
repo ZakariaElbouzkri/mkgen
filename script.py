@@ -36,7 +36,7 @@ def main():
     files, headerFiles = [list(map(lambda x:x.removeprefix(cwd+'/'), files)), 
                         list(map(lambda x:x.removeprefix(cwd+'/'), headerFiles))]
     comp = "gcc" if extention == '.c' else "c++"
-    comp += " -Wall -Wextra -Werro"
+    comp += " -Wall -Wextra -Werror"
     if extention == '.cpp': comp += " -std=c++98"
     
     MakeFileTemplate=f"""\
