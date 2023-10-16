@@ -16,6 +16,9 @@ def recursivSearch(cwd, ext, hExt, files=[], headers=[]):
     items = os.listdir(cwd)
     for item in items:
         itemdir = os.path.join(cwd, item)
+        # ignore file that contains test word
+        if itemdir.find("test") != -1:
+            continue
         if os.path.isdir(itemdir):
             recursivSearch(itemdir, ext, hExt)
         elif (x:= typeOfFile(itemdir, ext, hExt)) != ANY:
