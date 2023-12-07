@@ -2,7 +2,7 @@ import os
 import sys
 
 class	Mkgen:
-    def __init__(self, ext='.cpp', name='main') -> None:
+    def __init__(self, name='main', ext='.cpp') -> None:
         self.name = name
         self.ext = ext
         self.cwd = os.getcwd()
