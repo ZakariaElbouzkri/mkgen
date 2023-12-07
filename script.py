@@ -1,76 +1,64 @@
 import os
 import sys
 
-HEADER = 1
-FILE = 2
-ANY = 3
-
-def typeOfFile(item, ext, hExt):
-    if (item.endswith(ext)):
-        return (FILE)
-    elif item.endswith(hExt):
-        return (HEADER)
-    return (ANY)
-
-def recursivSearch(cwd, ext, hExt, files=[], headers=[]):
-    items = os.listdir(cwd)
-    for item in items:
-        itemdir = os.path.join(cwd, item)
-        # ignore file that contains test word
-        if itemdir.find("test") != -1:
-            continue
-        if os.path.isdir(itemdir):
-            recursivSearch(itemdir, ext, hExt)
-        elif (x:= typeOfFile(itemdir, ext, hExt)) != ANY:
-            if x == HEADER:
-                headers.append(itemdir)
-            else:
-                files.append(itemdir)
-    return files, headers
-
-def main():
-    cwd = os.getcwd()
-    args = sys.argv[1:]
-    extention = '.c'
-    if len(args) >= 1:
-        extention = args[0]
-    header_extention = ".h" if extention == '.c' else ".hpp"
-    files, headerFiles = recursivSearch(cwd, extention, header_extention)
-    files, headerFiles = [list(map(lambda x:x.removeprefix(cwd+'/'), files)), 
-                        list(map(lambda x:x.removeprefix(cwd+'/'), headerFiles))]
-    comp = "gcc" if extention == '.c' else "c++"
-    comp += " -Wall -Wextra -Werror"
-    if extention == '.cpp': comp += " -std=c++98"
+class	Mkgen:
+    def __init__(self, ext='.cpp', name='main') -> None:
+        self.name = name
+        self.ext = ext
+        self.cwd = os.getcwd()
+        self.files = []
+        self.header = []
+        self.scanneDir(self.cwd)
     
-    MakeFileTemplate=f"""\
-NAME = main
-CC   = {comp}
-RM   = rm -f
-SRCS = {" ".join(files)}
-OBJ  = $(SRCS:{extention}=.o)
-INC  = {" ".join(headerFiles)}
+    def scanneDir(self, cwd):
+        items = os.listdir(cwd)
+        for item in items:
+            item_dir = os.path.join(cwd, item)
+            if os.path.isdir(item_dir):
+                self.scanneDir(item_dir)
+            elif item_dir.endswith(self.ext):
+                self.files.append(item_dir.removeprefix(self.cwd + '/').removesuffix(self.ext))
+            elif item_dir.endswith(('.h', '.hpp')):
+                self.header.append(item_dir.removeprefix(self.cwd + '/'))
+    
+    def generateMakefile(self):
+        template = f"""\
+NAME      = {self.name}
+CC        = {'c++ -std=c++98' if self.ext == '.cpp' else 'cc'}
+FLAGS     = -Wall -Wextra -Werror
+RM        = rm -fr
+OBJDIR    = .obj
+FILES     = {" ".join(self.files)}
+SRC       = $(FILES:={self.ext})
+OBJ       = $(addprefix $(OBJDIR)/, $(FILES:=.o))
+INCLUEDES = {" ".join(self.header)}
 
 all: $(NAME)
 
 $(NAME): $(OBJ)
-\t$(CC) $^ -o $@
+\t$(CC) $(OBJ) -o $(NAME)
 
-%.o: %{extention} $(INC)
-\t$(CC) -c $< -o $@
+$(OBJDIR)/%.o: %{self.ext} $(INCLUEDES)
+\tmkdir -p $(dir $@)
+\t$(CC) $(FLAGS) -c $< -o $@
 
 clean:
-\t$(RM) $(OBJ)
+\t$(RM) $(OBJDIR) $(OBJ)
 
 fclean: clean
-\t$(RM) $(NAME)
+\t$(RM)  $(NAME)
 
 re: fclean all
-
-.PHONY: fclean all clean re
+.PHONY: all clean fclean re
 """
-    with open("Makefile", "w") as f:
-        print(MakeFileTemplate, file=f)
-    
+        with open('Makefile', 'w') as mk:
+            print(template, file=mk)
 
-if __name__=='__main__':
-    main()
+if __name__ == '__main__':
+    try:
+        if len(sys.argv) <= 3:
+            generator = Mkgen(*sys.argv[1:])
+            generator.generateMakefile()
+    except Exception as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
